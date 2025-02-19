@@ -83,9 +83,10 @@ class ImageSteganography:
             # Extract message up to delimiter
             if self.delimiter in message:
                 return message.split(self.delimiter)[0]
-            return message
-        except Exception as e:
-            return "Incorrect password or no hidden message found"
+        return message
+    except Exception as e:
+        return "Incorrect password or no hidden message found"
+
 
 def main():
     steg = ImageSteganography()
@@ -124,6 +125,7 @@ def main():
             break
         else:
             print("Invalid choice!")
+
 
 if __name__ == "__main__":
     main()
