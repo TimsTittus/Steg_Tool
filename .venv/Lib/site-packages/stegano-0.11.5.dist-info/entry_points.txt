@@ -1,0 +1,6 @@
+[console_scripts]
+stegano-lsb=bin.lsb:main
+stegano-red=bin.red:main
+stegano-steganalysis-parity=bin.parity:main
+stegano-steganalysis-statistics=bin.statistics:main
+
