@@ -1,4 +1,5 @@
 streamlit
 stegano
 cryptography
-Pillow
+pillow
+opencv-python-headless
