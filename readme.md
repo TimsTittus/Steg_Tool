@@ -1,6 +1,6 @@
 # Steg_Tool
 
-Steg_Tool is a simple steganography tool that allows you to hide and extract messages within images, made for the python micro-project in S4.
+Steg_Tool is a simple steganography tool that allows you to hide and extract messages within images, made for the python micro-project in Semester 4.
 
 ## Features
 
