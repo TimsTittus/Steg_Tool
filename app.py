@@ -6,7 +6,7 @@ from PIL import Image
 import io
 
 # Streamlit UI Configuration
-st.set_page_config(page_title="StegX", page_icon="🔒", layout="centered")
+st.set_page_config(page_title="StegX", page_icon=" ", layout="centered")
 
 # Custom Styling
 st.markdown(
@@ -50,36 +50,36 @@ def reveal_message(image, key):
         try:
             return decrypt_message(encrypted_message, key)
         except Exception:
-            return "❌ Decryption failed! Invalid key."
-    return "⚠️ No hidden message found."
+            return "Decryption failed! Invalid key."
+    return "No hidden message found."
 
 # Title
-st.markdown("<h1 style='text-align: center;'>🔒 StegX 🔒</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center;'>TimSteg</h1>", unsafe_allow_html=True)
 st.markdown("<h3 style='text-align: center; color: gray;'>Hide and Reveal Secret Messages in Images</h3>", unsafe_allow_html=True)
 
 # Option Selection
 st.markdown("---")
-option = st.radio("📌 Choose an option:", ["Hide Message", "Reveal Message"], horizontal=True)
+option = st.radio("Choose an option:", ["Hide Message", "Reveal Message"], horizontal=True)
 st.markdown("---")
 
 # Hide Message Section
 if option == "Hide Message":
-    st.markdown("### 🖼️ Upload an Image")
+    st.markdown("### Upload an Image")
     uploaded_image = st.file_uploader("Upload an image (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
     
-    st.markdown("### 🔑 Secret Message")
+    st.markdown("### Secret Message")
     secret_message = st.text_area("Enter the secret message:")
 
     # Generate Key
-    if st.button("🔑 Generate Encryption Key"):
+    if st.button("Generate Encryption Key"):
         key = generate_key()
-        st.text_area("🔑 Save this key for decryption:", key)
+        st.text_area("Save this key for decryption:", key)
         st.markdown(f'<p style="color:gray; font-size:12px;">Copy this key safely for future use.</p>', unsafe_allow_html=True)
 
-    encryption_key = st.text_input("🔐 Enter encryption key:")
+    encryption_key = st.text_input("Enter encryption key:")
 
     # Hide Message in Image
-    if st.button("🖼️ Hide Message") and uploaded_image and secret_message and encryption_key:
+    if st.button("Hide Message") and uploaded_image and secret_message and encryption_key:
         try:
             image = Image.open(uploaded_image)
             secret_image = hide_message(image, secret_message, encryption_key)
@@ -89,26 +89,26 @@ if option == "Hide Message":
             secret_image.save(image_bytes, format="PNG")
             image_bytes.seek(0)
 
-            st.success("✅ Message hidden successfully!")
-            st.download_button("⬇️ Download Encoded Image", image_bytes, "encoded_image.png", "image/png")
+            st.success("Message hidden successfully!")
+            st.download_button("⬇Download Encoded Image", image_bytes, "encoded_image.png", "image/png")
         except Exception as e:
-            st.error(f"⚠️ Error: {e}")
+            st.error(f"Error: {e}")
 
 # Reveal Message Section
 elif option == "Reveal Message":
-    st.markdown("### 🔍 Upload an Encoded Image")
+    st.markdown("### Upload an Encoded Image")
     uploaded_image = st.file_uploader("Upload the encoded image (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
 
-    st.markdown("### 🔑 Enter Decryption Key")
+    st.markdown("### Enter Decryption Key")
     decryption_key = st.text_input("Enter decryption key:")
 
-    if st.button("🔓 Reveal Message") and uploaded_image and decryption_key:
+    if st.button("Reveal Message") and uploaded_image and decryption_key:
         try:
             image = Image.open(uploaded_image)
             hidden_message = reveal_message(image, decryption_key)
-            st.text_area("📩 Hidden Message:", hidden_message)
+            st.text_area("Hidden Message:", hidden_message)
         except Exception as e:
-            st.error(f"⚠️ Error: {e}")
+            st.error(f"Error: {e}")
 
 # Footer
 st.markdown("---")
