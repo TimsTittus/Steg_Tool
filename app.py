@@ -1,9 +1,7 @@
 import streamlit as st
 from clipboard_utils import clipboard_button
-from stegano import lsb
-from cryptography.fernet import Fernet, InvalidToken
-import base64
-import binascii
+from crypto_utils import generate_key, is_valid_fernet_key, encrypt_message, decrypt_message
+from stego_utils import hide_message, reveal_message
 from PIL import Image, UnidentifiedImageError
 import io
 
@@ -25,48 +23,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-def generate_key():
-    return Fernet.generate_key().decode()
-
-def is_valid_fernet_key(key):
-    # Fernet key must be 32 url-safe base64-encoded bytes (44 chars)
-    if not isinstance(key, str):
-        return False
-    try:
-        decoded = base64.urlsafe_b64decode(key.encode())
-        return len(decoded) == 32
-    except Exception:
-        return False
-
-def encrypt_message(message, key):
-    if not is_valid_fernet_key(key):
-        raise ValueError("Invalid Fernet key format. Key must be 44 url-safe base64 characters.")
-    cipher_suite = Fernet(key.encode())  
-    encrypted_message = cipher_suite.encrypt(message.encode())
-    return base64.urlsafe_b64encode(encrypted_message).decode()
-
-def decrypt_message(encrypted_message, key):
-    if not is_valid_fernet_key(key):
-        raise ValueError("Invalid Fernet key format. Key must be 44 url-safe base64 characters.")
-    cipher_suite = Fernet(key.encode())  
-    decrypted_message = cipher_suite.decrypt(base64.urlsafe_b64decode(encrypted_message)).decode()
-    return decrypted_message
-
-def hide_message(image, message, key):
-    encrypted_message = encrypt_message(message, key)
-    secret_image = lsb.hide(image, encrypted_message)
-    return secret_image
-
-def reveal_message(image, key):
-    encrypted_message = lsb.reveal(image)
-    if encrypted_message:
-        try:
-            return decrypt_message(encrypted_message, key)
-        except InvalidToken:
-            return "Decryption failed! Invalid or incorrect key."
-        except (ValueError, binascii.Error):
-            return "Decryption failed! Corrupted or invalid encrypted data."
-    return "No hidden message found."
+## Crypto and stego logic moved to crypto_utils.py and stego_utils.py
 
 # Session state for storing the encryption key
 if "generated_key" not in st.session_state:
@@ -125,7 +82,7 @@ if option == "Hide Message":
                 if len(encrypted_message) > capacity:
                     st.error(f"Message too large to hide in this image. Max size: {capacity} bytes, message size: {len(encrypted_message)} bytes.")
                 else:
-                    secret_image = lsb.hide(image, encrypted_message)
+                    secret_image = hide_message(image, secret_message, encryption_key)
                     image_bytes = io.BytesIO()
                     secret_image.save(image_bytes, format="PNG")
                     image_bytes.seek(0)
