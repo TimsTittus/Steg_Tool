@@ -1,4 +1,5 @@
 import streamlit as st
+from clipboard_utils import clipboard_button
 from stegano import lsb
 from cryptography.fernet import Fernet, InvalidToken
 import base64
@@ -27,12 +28,26 @@ st.markdown(
 def generate_key():
     return Fernet.generate_key().decode()
 
+def is_valid_fernet_key(key):
+    # Fernet key must be 32 url-safe base64-encoded bytes (44 chars)
+    if not isinstance(key, str):
+        return False
+    try:
+        decoded = base64.urlsafe_b64decode(key.encode())
+        return len(decoded) == 32
+    except Exception:
+        return False
+
 def encrypt_message(message, key):
+    if not is_valid_fernet_key(key):
+        raise ValueError("Invalid Fernet key format. Key must be 44 url-safe base64 characters.")
     cipher_suite = Fernet(key.encode())  
     encrypted_message = cipher_suite.encrypt(message.encode())
     return base64.urlsafe_b64encode(encrypted_message).decode()
 
 def decrypt_message(encrypted_message, key):
+    if not is_valid_fernet_key(key):
+        raise ValueError("Invalid Fernet key format. Key must be 44 url-safe base64 characters.")
     cipher_suite = Fernet(key.encode())  
     decrypted_message = cipher_suite.decrypt(base64.urlsafe_b64decode(encrypted_message)).decode()
     return decrypted_message
@@ -81,31 +96,46 @@ if option == "Hide Message":
     # Generate Key
     if st.button("Generate Encryption Key"):
         st.session_state.generated_key = generate_key()
-    
-    # Display the generated key if it exists
-    if st.session_state.generated_key:
-        st.text_area("Save this key for decryption:", st.session_state.generated_key, key="key_display")
-        st.markdown('<p style="color:gray; font-size:12px;">Copy this key safely for future use.</p>', unsafe_allow_html=True)
 
-    encryption_key = st.text_input("Enter encryption key:", value=st.session_state.generated_key or "")
+    if st.session_state.generated_key:
+        show_key = st.checkbox("Show generated encryption key")
+        if show_key:
+            st.text_area("Save this key for decryption:", st.session_state.generated_key, key="key_display")
+            clipboard_button(st.session_state.generated_key, label="Copy to Clipboard")
+            st.markdown('<p style="color:gray; font-size:12px;">Copy this key safely for future use.</p>', unsafe_allow_html=True)
+
+    encryption_key = st.text_input("Enter encryption key:")
 
     if st.button("Hide Message") and uploaded_image and secret_message and encryption_key:
-        try:
-            image = Image.open(uploaded_image)
-            secret_image = hide_message(image, secret_message, encryption_key)
+        if not is_valid_fernet_key(encryption_key):
+            st.error("Invalid encryption key format. Key must be 44 url-safe base64 characters.")
+        else:
+            try:
+                image = Image.open(uploaded_image)
+                if image.mode == 'RGB':
+                    capacity = image.width * image.height
+                elif image.mode == 'L':
+                    capacity = image.width * image.height
+                else:
+                    st.error(f"Unsupported image mode: {image.mode}. Please use RGB or grayscale images.")
+                    raise UnidentifiedImageError()
 
-            image_bytes = io.BytesIO()
-            secret_image.save(image_bytes, format="PNG")
-            image_bytes.seek(0)
-
-            st.success("Message hidden successfully!")
-            st.download_button("⬇Download Encoded Image", image_bytes, "encoded_image.png", "image/png")
-        except ValueError as e:
-            st.error(f"Invalid encryption key format: {e}")
-        except UnidentifiedImageError:
-            st.error("Cannot process this image. Please upload a valid PNG, JPG, or JPEG file.")
-        except Exception as e:
-            st.error(f"Unexpected error: {e}")
+                encrypted_message = encrypt_message(secret_message, encryption_key)
+                if len(encrypted_message) > capacity:
+                    st.error(f"Message too large to hide in this image. Max size: {capacity} bytes, message size: {len(encrypted_message)} bytes.")
+                else:
+                    secret_image = lsb.hide(image, encrypted_message)
+                    image_bytes = io.BytesIO()
+                    secret_image.save(image_bytes, format="PNG")
+                    image_bytes.seek(0)
+                    st.success("Message hidden successfully!")
+                    st.download_button("⬇Download Encoded Image", image_bytes, "encoded_image.png", "image/png")
+            except ValueError as e:
+                st.error(f"Invalid encryption key format: {e}")
+            except UnidentifiedImageError:
+                st.error("Cannot process this image. Please upload a valid PNG, JPG, or JPEG file.")
+            except Exception as e:
+                st.error(f"Unexpected error: {e}")
 
 elif option == "Reveal Message":
     st.markdown("### Upload an Encoded Image")
@@ -119,16 +149,19 @@ elif option == "Reveal Message":
     decryption_key = st.text_input("Enter decryption key:")
 
     if st.button("Reveal Message") and uploaded_image and decryption_key:
-        try:
-            image = Image.open(uploaded_image)
-            hidden_message = reveal_message(image, decryption_key)
-            st.text_area("Hidden Message:", hidden_message)
-        except ValueError as e:
-            st.error(f"Invalid decryption key format: {e}")
-        except UnidentifiedImageError:
-            st.error("Cannot process this image. Please upload a valid encoded image.")
-        except Exception as e:
-            st.error(f"Unexpected error: {e}")
+        if not is_valid_fernet_key(decryption_key):
+            st.error("Invalid decryption key format. Key must be 44 url-safe base64 characters.")
+        else:
+            try:
+                image = Image.open(uploaded_image)
+                hidden_message = reveal_message(image, decryption_key)
+                st.text_area("Hidden Message:", hidden_message)
+            except ValueError as e:
+                st.error(f"Invalid decryption key format: {e}")
+            except UnidentifiedImageError:
+                st.error("Cannot process this image. Please upload a valid encoded image.")
+            except Exception as e:
+                st.error(f"Unexpected error: {e}")
 
 st.markdown("---")
 st.markdown("<h4 style='text-align: center; color: gray;'>TimSteg</h4>", unsafe_allow_html=True)
