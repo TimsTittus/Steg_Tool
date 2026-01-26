@@ -112,14 +112,15 @@ if option == "Hide Message":
         else:
             try:
                 image = Image.open(uploaded_image)
-                if image.mode == 'RGB':
-                    capacity = image.width * image.height
-                elif image.mode == 'L':
-                    capacity = image.width * image.height
-                else:
-                    st.error(f"Unsupported image mode: {image.mode}. Please use RGB or grayscale images.")
-                    raise UnidentifiedImageError()
+                # Convert to PNG and RGB for LSB safety
+                if image.mode != 'RGB':
+                    image = image.convert('RGB')
+                png_bytes = io.BytesIO()
+                image.save(png_bytes, format="PNG")
+                png_bytes.seek(0)
+                image = Image.open(png_bytes)
 
+                capacity = image.width * image.height
                 encrypted_message = encrypt_message(secret_message, encryption_key)
                 if len(encrypted_message) > capacity:
                     st.error(f"Message too large to hide in this image. Max size: {capacity} bytes, message size: {len(encrypted_message)} bytes.")
