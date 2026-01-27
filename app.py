@@ -42,7 +42,15 @@ st.markdown("---")
 if option == "Hide Message":
     st.markdown("### Upload an Image")
     uploaded_image = st.file_uploader("Upload an image (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
-    
+
+    # Show preview if image is uploaded and valid
+    if uploaded_image and uploaded_image.size <= MAX_FILE_SIZE_BYTES:
+        try:
+            img_preview = Image.open(uploaded_image)
+            st.image(img_preview, caption="Preview of uploaded image", width=700)
+        except Exception:
+            st.warning("Could not preview this image.")
+
     if uploaded_image and uploaded_image.size > MAX_FILE_SIZE_BYTES:
         st.error(f"File too large! Maximum allowed size is {MAX_FILE_SIZE_MB} MB. Your file is {uploaded_image.size / (1024 * 1024):.2f} MB.")
         uploaded_image = None
@@ -98,7 +106,14 @@ if option == "Hide Message":
 elif option == "Reveal Message":
     st.markdown("### Upload an Encoded Image")
     uploaded_image = st.file_uploader("Upload the encoded image (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
-    
+
+    if uploaded_image and uploaded_image.size <= MAX_FILE_SIZE_BYTES:
+        try:
+            img_preview = Image.open(uploaded_image)
+            st.image(img_preview, caption="Preview of uploaded image", width=700)
+        except Exception:
+            st.warning("Could not preview this image.")
+
     if uploaded_image and uploaded_image.size > MAX_FILE_SIZE_BYTES:
         st.error(f"File too large! Maximum allowed size is {MAX_FILE_SIZE_MB} MB. Your file is {uploaded_image.size / (1024 * 1024):.2f} MB.")
         uploaded_image = None
