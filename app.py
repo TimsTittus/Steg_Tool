@@ -42,12 +42,24 @@ st.markdown("---")
 if option == "Hide Message":
     with st.form("hide_message_form"):
         st.markdown("### Upload an Image")
-        uploaded_image = st.file_uploader("Upload an image (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
+        uploaded_image = st.file_uploader(
+            label="Upload an image (PNG, JPG, JPEG)",
+            type=["png", "jpg", "jpeg"],
+            help="Select an image file to hide your message in."
+        )
 
         if uploaded_image and uploaded_image.size <= MAX_FILE_SIZE_BYTES:
             try:
                 img_preview = Image.open(uploaded_image)
-                st.image(img_preview, caption="Preview of uploaded image", width=700)
+                st.image(
+                    img_preview,
+                    caption="Preview of uploaded image",
+                    width=700,
+                    output_format="PNG",
+                    channels="RGB",
+                    use_column_width=False,
+                    alt="Preview of uploaded image for screen readers"
+                )
             except Exception:
                 st.warning("Could not preview this image.")
 
@@ -56,7 +68,11 @@ if option == "Hide Message":
             uploaded_image = None
 
         st.markdown("### Secret Message")
-        secret_message = st.text_area("Enter the secret message:")
+        secret_message = st.text_area(
+            label="Enter the secret message:",
+            placeholder="Type your secret message here...",
+            help="This message will be encrypted and hidden in the image."
+        )
 
         # Generate Key
         gen_key_col, show_key_col = st.columns([1, 2])
@@ -73,7 +89,11 @@ if option == "Hide Message":
             clipboard_button(st.session_state.generated_key, label="Copy to Clipboard")
             st.markdown('<p style="color:gray; font-size:12px;">Copy this key safely for future use.</p>', unsafe_allow_html=True)
 
-        encryption_key = st.text_input("Enter encryption key:")
+        encryption_key = st.text_input(
+            label="Enter encryption key:",
+            placeholder="Paste your 44-character Fernet key here...",
+            help="Paste the encryption key used for hiding the message."
+        )
         hide_btn = st.form_submit_button("Hide Message")
 
         if hide_btn and uploaded_image and secret_message and encryption_key:
@@ -111,12 +131,24 @@ if option == "Hide Message":
 elif option == "Reveal Message":
     with st.form("reveal_message_form"):
         st.markdown("### Upload an Encoded Image")
-        uploaded_image = st.file_uploader("Upload the encoded image (PNG, JPG, JPEG)", type=["png", "jpg", "jpeg"])
+        uploaded_image = st.file_uploader(
+            label="Upload the encoded image (PNG, JPG, JPEG)",
+            type=["png", "jpg", "jpeg"],
+            help="Select the image file containing the hidden message."
+        )
 
         if uploaded_image and uploaded_image.size <= MAX_FILE_SIZE_BYTES:
             try:
                 img_preview = Image.open(uploaded_image)
-                st.image(img_preview, caption="Preview of uploaded image", width=700)
+                st.image(
+                    img_preview,
+                    caption="Preview of uploaded image",
+                    width=700,
+                    output_format="PNG",
+                    channels="RGB",
+                    use_column_width=False,
+                    alt="Preview of uploaded image for screen readers"
+                )
             except Exception:
                 st.warning("Could not preview this image.")
 
@@ -125,7 +157,11 @@ elif option == "Reveal Message":
             uploaded_image = None
 
         st.markdown("### Enter Decryption Key")
-        decryption_key = st.text_input("Enter decryption key:")
+        decryption_key = st.text_input(
+            label="Enter decryption key:",
+            placeholder="Paste your 44-character Fernet key here...",
+            help="Paste the decryption key used to reveal the message."
+        )
         reveal_btn = st.form_submit_button("Reveal Message")
 
         if reveal_btn and uploaded_image and decryption_key:
@@ -135,7 +171,12 @@ elif option == "Reveal Message":
                 try:
                     image = Image.open(uploaded_image)
                     hidden_message = reveal_message(image, decryption_key)
-                    st.text_area("Hidden Message:", hidden_message)
+                    st.text_area(
+                        label="Hidden Message:",
+                        value=hidden_message,
+                        help="This is the message revealed from the image.",
+                        placeholder="Revealed message will appear here..."
+                    )
                 except ValueError as e:
                     st.error(f"Invalid decryption key format: {e}")
                 except UnidentifiedImageError:
