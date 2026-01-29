@@ -33,6 +33,16 @@ if "generated_key" not in st.session_state:
 st.markdown("<h1 style='text-align: center;'>TimSteg</h1>", unsafe_allow_html=True)
 st.markdown("<h3 style='text-align: center; color: gray;'>Hide and Reveal Secret Messages in Images</h3>", unsafe_allow_html=True)
 
+# Security Notice
+st.markdown(
+    """
+    <div style='background:#fff3cd;border-left:6px solid #ffe066;padding:12px 18px;margin-bottom:16px;'>
+        <strong>Security Notice:</strong> Steganography only hides the existence of a message, but does not provide strong security by itself. Always use strong encryption (like Fernet) in addition to steganography for sensitive information. Never rely on steganography alone to protect secrets.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
 # Option Selection
 st.markdown("---")
 option = st.radio("Choose an option:", ["Hide Message", "Reveal Message"], horizontal=True)
