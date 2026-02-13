@@ -1,6 +1,7 @@
 import streamlit as st
 from clipboard_utils import clipboard_button
 from crypto_utils import generate_key, is_valid_fernet_key, encrypt_message, decrypt_message
+from pbkdf2_utils import derive_fernet_key_from_password, generate_salt
 from stego_utils import hide_message, reveal_message
 from PIL import Image, UnidentifiedImageError
 import io
@@ -99,11 +100,23 @@ if option == "Hide Message":
             clipboard_button(st.session_state.generated_key, label="Copy to Clipboard")
             st.markdown('<p style="color:gray; font-size:12px;">Copy this key safely for future use.</p>', unsafe_allow_html=True)
 
-        encryption_key = st.text_input(
-            label="Enter encryption key:",
-            placeholder="Paste your 44-character Fernet key here...",
-            help="Paste the encryption key used for hiding the message."
-        )
+        st.markdown("#### Encryption Key or Password")
+        key_method = st.radio("Choose key input method:", ["Password", "Fernet Key"], horizontal=True)
+        if key_method == "Password":
+            password = st.text_input("Enter password:", type="password", help="A password will be used to derive the encryption key.")
+            salt = st.text_input("Salt (leave blank to auto-generate):", help="A random salt is recommended for each message. Save it for decryption.")
+            if not salt:
+                if 'generated_salt' not in st.session_state:
+                    st.session_state.generated_salt = generate_salt().hex()
+                salt = st.session_state.generated_salt
+            st.code(f"Salt (save this for decryption!): {salt}")
+            encryption_key = derive_fernet_key_from_password(password, bytes.fromhex(salt)) if password else ""
+        else:
+            encryption_key = st.text_input(
+                label="Enter encryption key:",
+                placeholder="Paste your 44-character Fernet key here...",
+                help="Paste the encryption key used for hiding the message."
+            )
         hide_btn = st.form_submit_button("Hide Message")
 
         if hide_btn and uploaded_image and secret_message and encryption_key:
@@ -166,12 +179,18 @@ elif option == "Reveal Message":
             st.error(f"File too large! Maximum allowed size is {MAX_FILE_SIZE_MB} MB. Your file is {uploaded_image.size / (1024 * 1024):.2f} MB.")
             uploaded_image = None
 
-        st.markdown("### Enter Decryption Key")
-        decryption_key = st.text_input(
-            label="Enter decryption key:",
-            placeholder="Paste your 44-character Fernet key here...",
-            help="Paste the decryption key used to reveal the message."
-        )
+        st.markdown("### Decryption Key or Password")
+        key_method = st.radio("Choose key input method:", ["Password", "Fernet Key"], horizontal=True, key="reveal_key_method")
+        if key_method == "Password":
+            password = st.text_input("Enter password:", type="password", help="Enter the password used for encryption.", key="reveal_password")
+            salt = st.text_input("Salt (required):", help="Enter the salt used during encryption.", key="reveal_salt")
+            decryption_key = derive_fernet_key_from_password(password, bytes.fromhex(salt)) if password and salt else ""
+        else:
+            decryption_key = st.text_input(
+                label="Enter decryption key:",
+                placeholder="Paste your 44-character Fernet key here...",
+                help="Paste the decryption key used to reveal the message."
+            )
         reveal_btn = st.form_submit_button("Reveal Message")
 
         if reveal_btn and uploaded_image and decryption_key:
