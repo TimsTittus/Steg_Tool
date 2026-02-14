@@ -4,19 +4,21 @@ from cryptography.fernet import InvalidToken
 from crypto_utils import encrypt_message, decrypt_message
 
 def hide_message(image, message, key):
-    # If key is derived from PBKDF2, salt must be included in payload
-    # Convention: encrypted_message = salt_hex:actual_encrypted_message
+    # Add TIMSTEG header and version
+    HEADER = "TIMSTEG:"
     if hasattr(key, 'pbkdf2_salt_hex'):
         salt_hex = key.pbkdf2_salt_hex
-        encrypted_message = f"{salt_hex}:{encrypt_message(message, key)}"
+        payload = f"{HEADER}{salt_hex}:{encrypt_message(message, key)}"
     else:
-        encrypted_message = encrypt_message(message, key)
-    secret_image = lsb.hide(image, encrypted_message)
+        payload = f"{HEADER}{encrypt_message(message, key)}"
+    secret_image = lsb.hide(image, payload)
     return secret_image
 
 def reveal_message(image, key):
-    encrypted_message = lsb.reveal(image)
-    if encrypted_message:
+    payload = lsb.reveal(image)
+    HEADER = "TIMSTEG:"
+    if payload and payload.startswith(HEADER):
+        encrypted_message = payload[len(HEADER):]
         # Check for salt in payload
         if ':' in encrypted_message:
             salt_hex, actual_encrypted = encrypted_message.split(':', 1)
@@ -29,4 +31,6 @@ def reveal_message(image, key):
             return "Decryption failed! Invalid or incorrect key."
         except (ValueError, binascii.Error):
             return "Decryption failed! Corrupted or invalid encrypted data."
+    elif payload:
+        return "Invalid or unsupported stego payload (missing TIMSTEG header)."
     return "No hidden message found."
