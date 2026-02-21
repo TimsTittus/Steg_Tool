@@ -53,30 +53,33 @@ st.markdown("---")
 if option == "Hide Message":
     with st.form("hide_message_form"):
         st.markdown("### Upload an Image")
-        uploaded_image = st.file_uploader(
-            label="Upload an image (PNG, JPG, JPEG)",
+        uploaded_images = st.file_uploader(
+            label="Upload images (PNG, JPG, JPEG)",
             type=["png", "jpg", "jpeg"],
-            help="Select an image file to hide your message in."
+            help="Select one or more image files to hide your message in.",
+            accept_multiple_files=True
         )
 
-        if uploaded_image and uploaded_image.size <= MAX_FILE_SIZE_BYTES:
-            try:
-                img_preview = Image.open(uploaded_image)
-                st.image(
-                    img_preview,
-                    caption="Preview of uploaded image",
-                    width=700,
-                    output_format="PNG",
-                    channels="RGB",
-                    use_column_width=False,
-                    alt="Preview of uploaded image for screen readers"
-                )
-            except Exception:
-                st.warning("Could not preview this image.")
-
-        if uploaded_image and uploaded_image.size > MAX_FILE_SIZE_BYTES:
-            st.error(f"File too large! Maximum allowed size is {MAX_FILE_SIZE_MB} MB. Your file is {uploaded_image.size / (1024 * 1024):.2f} MB.")
-            uploaded_image = None
+        valid_images = []
+        if uploaded_images:
+            for img_file in uploaded_images:
+                if img_file.size > MAX_FILE_SIZE_BYTES:
+                    st.error(f"File '{img_file.name}' too large! Maximum allowed size is {MAX_FILE_SIZE_MB} MB. Your file is {img_file.size / (1024 * 1024):.2f} MB.")
+                else:
+                    try:
+                        img_preview = Image.open(img_file)
+                        st.image(
+                            img_preview,
+                            caption=f"Preview: {img_file.name}",
+                            width=700,
+                            output_format="PNG",
+                            channels="RGB",
+                            use_column_width=False,
+                            alt=f"Preview of uploaded image {img_file.name} for screen readers"
+                        )
+                        valid_images.append(img_file)
+                    except Exception:
+                        st.warning(f"Could not preview image '{img_file.name}'.")
 
         st.markdown("### Secret Message")
         secret_message = st.text_area(
@@ -115,62 +118,63 @@ if option == "Hide Message":
             encryption_key.pbkdf2_salt_hex = salt
         hide_btn = st.form_submit_button("Hide Message")
 
-        if hide_btn and uploaded_image and secret_message and encryption_key:
+        if hide_btn and valid_images and secret_message and encryption_key:
             if not is_valid_fernet_key(encryption_key):
                 st.error("Invalid encryption key format. Key must be 44 url-safe base64 characters.")
             else:
-                try:
-                    image = Image.open(uploaded_image)
-                    # Convert to PNG and RGB for LSB safety
-                    if image.mode != 'RGB':
-                        image = image.convert('RGB')
-                    png_bytes = io.BytesIO()
-                    image.save(png_bytes, format="PNG")
-                    png_bytes.seek(0)
-                    image = Image.open(png_bytes)
-
-                    capacity = image.width * image.height
-                    # salt is embedded in payload by stego_utils.hide_message
-                    secret_image = hide_message(image, secret_message, encryption_key)
-                    image_bytes = io.BytesIO()
-                    secret_image.save(image_bytes, format="PNG")
-                    image_bytes.seek(0)
-                    st.success("Message hidden successfully!")
-                    st.download_button("⬇Download Encoded Image", image_bytes, "encoded_image.png", "image/png")
-                except ValueError as e:
-                    st.error(f"Invalid encryption key format: {e}")
-                except UnidentifiedImageError:
-                    st.error("Cannot process this image. Please upload a valid PNG, JPG, or JPEG file.")
-                except Exception as e:
-                    st.error(f"Unexpected error: {e}")
+                for img_file in valid_images:
+                    try:
+                        image = Image.open(img_file)
+                        if image.mode != 'RGB':
+                            image = image.convert('RGB')
+                        png_bytes = io.BytesIO()
+                        image.save(png_bytes, format="PNG")
+                        png_bytes.seek(0)
+                        image = Image.open(png_bytes)
+                        capacity = image.width * image.height
+                        secret_image = hide_message(image, secret_message, encryption_key)
+                        image_bytes = io.BytesIO()
+                        secret_image.save(image_bytes, format="PNG")
+                        image_bytes.seek(0)
+                        st.success(f"Message hidden in '{img_file.name}' successfully!")
+                        st.download_button(f"⬇Download Encoded Image ({img_file.name})", image_bytes, f"encoded_{img_file.name}.png", "image/png")
+                    except ValueError as e:
+                        st.error(f"[{img_file.name}] Invalid encryption key format: {e}")
+                    except UnidentifiedImageError:
+                        st.error(f"[{img_file.name}] Cannot process this image. Please upload a valid PNG, JPG, or JPEG file.")
+                    except Exception as e:
+                        st.error(f"[{img_file.name}] Unexpected error: {e}")
 
 elif option == "Reveal Message":
     with st.form("reveal_message_form"):
         st.markdown("### Upload an Encoded Image")
-        uploaded_image = st.file_uploader(
-            label="Upload the encoded image (PNG, JPG, JPEG)",
+        uploaded_images = st.file_uploader(
+            label="Upload encoded images (PNG, JPG, JPEG)",
             type=["png", "jpg", "jpeg"],
-            help="Select the image file containing the hidden message."
+            help="Select one or more image files containing the hidden message.",
+            accept_multiple_files=True
         )
 
-        if uploaded_image and uploaded_image.size <= MAX_FILE_SIZE_BYTES:
-            try:
-                img_preview = Image.open(uploaded_image)
-                st.image(
-                    img_preview,
-                    caption="Preview of uploaded image",
-                    width=700,
-                    output_format="PNG",
-                    channels="RGB",
-                    use_column_width=False,
-                    alt="Preview of uploaded image for screen readers"
-                )
-            except Exception:
-                st.warning("Could not preview this image.")
-
-        if uploaded_image and uploaded_image.size > MAX_FILE_SIZE_BYTES:
-            st.error(f"File too large! Maximum allowed size is {MAX_FILE_SIZE_MB} MB. Your file is {uploaded_image.size / (1024 * 1024):.2f} MB.")
-            uploaded_image = None
+        valid_images = []
+        if uploaded_images:
+            for img_file in uploaded_images:
+                if img_file.size > MAX_FILE_SIZE_BYTES:
+                    st.error(f"File '{img_file.name}' too large! Maximum allowed size is {MAX_FILE_SIZE_MB} MB. Your file is {img_file.size / (1024 * 1024):.2f} MB.")
+                else:
+                    try:
+                        img_preview = Image.open(img_file)
+                        st.image(
+                            img_preview,
+                            caption=f"Preview: {img_file.name}",
+                            width=700,
+                            output_format="PNG",
+                            channels="RGB",
+                            use_column_width=False,
+                            alt=f"Preview of uploaded image {img_file.name} for screen readers"
+                        )
+                        valid_images.append(img_file)
+                    except Exception:
+                        st.warning(f"Could not preview image '{img_file.name}'.")
 
         st.markdown("### Password-Based Decryption Key")
         password = st.text_input("Enter password:", type="password", help="Enter the password used for encryption.", key="reveal_password")
@@ -180,25 +184,26 @@ elif option == "Reveal Message":
         decryption_key = KeyWithSalt(derive_fernet_key_from_password(password, b"")) if password else ""
         reveal_btn = st.form_submit_button("Reveal Message")
 
-        if reveal_btn and uploaded_image and decryption_key:
+    if reveal_btn and valid_images and decryption_key:
             if not is_valid_fernet_key(decryption_key):
                 st.error("Invalid decryption key format. Key must be 44 url-safe base64 characters.")
             else:
-                try:
-                    image = Image.open(uploaded_image)
-                    hidden_message = reveal_message(image, decryption_key)
-                    st.text_area(
-                        label="Hidden Message:",
-                        value=hidden_message,
-                        help="This is the message revealed from the image.",
-                        placeholder="Revealed message will appear here..."
-                    )
-                except ValueError as e:
-                    st.error(f"Invalid decryption key format: {e}")
-                except UnidentifiedImageError:
-                    st.error("Cannot process this image. Please upload a valid encoded image.")
-                except Exception as e:
-                    st.error(f"Unexpected error: {e}")
+                for img_file in valid_images:
+                    try:
+                        image = Image.open(img_file)
+                        hidden_message = reveal_message(image, decryption_key)
+                        st.text_area(
+                            label=f"Hidden Message from {img_file.name}:",
+                            value=hidden_message,
+                            help="This is the message revealed from the image.",
+                            placeholder="Revealed message will appear here..."
+                        )
+                    except ValueError as e:
+                        st.error(f"[{img_file.name}] Invalid decryption key format: {e}")
+                    except UnidentifiedImageError:
+                        st.error(f"[{img_file.name}] Cannot process this image. Please upload a valid encoded image.")
+                    except Exception as e:
+                        st.error(f"[{img_file.name}] Unexpected error: {e}")
 
 st.markdown("---")
 st.markdown("<h4 style='text-align: center; color: gray;'>TimSteg</h4>", unsafe_allow_html=True)
