@@ -73,13 +73,11 @@ if option == "Hide Message":
                             caption=f"Preview: {img_file.name}",
                             width=700,
                             output_format="PNG",
-                            channels="RGB",
-                            use_column_width=False,
-                            alt=f"Preview of uploaded image {img_file.name} for screen readers"
+                            channels="RGB"
                         )
                         valid_images.append(img_file)
-                    except Exception:
-                        st.warning(f"Could not preview image '{img_file.name}'.")
+                    except Exception as e:
+                        st.warning(f"Could not preview image '{img_file.name}': {e}")
 
         st.markdown("### Secret Message")
         secret_message = st.text_area(
@@ -106,22 +104,35 @@ if option == "Hide Message":
         st.markdown("#### Password-Based Encryption Key")
         password = st.text_input("Enter password:", type="password", help="A password will be used to derive the encryption key.")
         salt = st.text_input("Salt (leave blank to auto-generate):", help="A random salt is recommended for each message. Save it for decryption.")
+        salt_error = False
         if not salt:
             if 'generated_salt' not in st.session_state:
                 st.session_state.generated_salt = generate_salt().hex()
             salt = st.session_state.generated_salt
+        try:
+            salt_bytes = bytes.fromhex(salt)
+        except ValueError:
+            salt_error = True
+            salt_bytes = None
         st.code(f"Salt (save this for decryption!): {salt}")
         class KeyWithSalt(str):
             pass
-        encryption_key = KeyWithSalt(derive_fernet_key_from_password(password, bytes.fromhex(salt))) if password else ""
-        if encryption_key:
+        if password and not salt_error:
+            encryption_key = KeyWithSalt(derive_fernet_key_from_password(password, salt_bytes))
             encryption_key.pbkdf2_salt_hex = salt
+        else:
+            encryption_key = ""
+        if salt_error:
+            st.error("Salt must be a valid hexadecimal string.")
         hide_btn = st.form_submit_button("Hide Message")
 
         if hide_btn and valid_images and secret_message and encryption_key:
             if not is_valid_fernet_key(encryption_key):
                 st.error("Invalid encryption key format. Key must be 44 url-safe base64 characters.")
             else:
+                if 'encoded_images' not in st.session_state:
+                    st.session_state.encoded_images = []
+                st.session_state.encoded_images.clear()
                 for img_file in valid_images:
                     try:
                         image = Image.open(img_file)
@@ -137,13 +148,21 @@ if option == "Hide Message":
                         secret_image.save(image_bytes, format="PNG")
                         image_bytes.seek(0)
                         st.success(f"Message hidden in '{img_file.name}' successfully!")
-                        st.download_button(f"⬇Download Encoded Image ({img_file.name})", image_bytes, f"encoded_{img_file.name}.png", "image/png")
+                        st.session_state.encoded_images.append({
+                            'name': img_file.name,
+                            'bytes': image_bytes.getvalue()
+                        })
                     except ValueError as e:
                         st.error(f"[{img_file.name}] Invalid encryption key format: {e}")
                     except UnidentifiedImageError:
                         st.error(f"[{img_file.name}] Cannot process this image. Please upload a valid PNG, JPG, or JPEG file.")
                     except Exception as e:
                         st.error(f"[{img_file.name}] Unexpected error: {e}")
+
+    if 'encoded_images' in st.session_state and st.session_state.encoded_images:
+        st.markdown("### Download Encoded Images")
+        for img in st.session_state.encoded_images:
+            st.download_button(f"⬇Download Encoded Image ({img['name']})", img['bytes'], f"encoded_{img['name']}.png", "image/png")
 
 elif option == "Reveal Message":
     with st.form("reveal_message_form"):
@@ -173,8 +192,8 @@ elif option == "Reveal Message":
                             alt=f"Preview of uploaded image {img_file.name} for screen readers"
                         )
                         valid_images.append(img_file)
-                    except Exception:
-                        st.warning(f"Could not preview image '{img_file.name}'.")
+                    except Exception as e:
+                        st.warning(f"Could not preview image '{img_file.name}': {e}")
 
         st.markdown("### Password-Based Decryption Key")
         password = st.text_input("Enter password:", type="password", help="Enter the password used for encryption.", key="reveal_password")
